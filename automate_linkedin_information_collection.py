@@ -135,7 +135,8 @@ def parse(content,url,index):
         connectionsCount = re.findall('"connectionsCount":(\d+)', networkInfo_txt)
         if connectionsCount:
             print('Connection number: %s' % connectionsCount[0])
-    educations = re.findall('({[^{]*?profile\.Education"[^\}]*?\})', content)
+    # educations = re.findall('({[^{]*?profile\.Education"[^\}]*?\})', content)
+    educations = re.findall('"description.*?degreeUrn', content)
     if educations:
         print('Education:')
     schoolNamelist=[]
@@ -190,11 +191,13 @@ def parse(content,url,index):
                 writeExcel(index + 2, format_dict['column_of_position'], occupation[0], style)
                 writeExcel(index + 2, format_dict['column_of_place'], locationName[0], style)
                 writeExcel(index + 2, 26, bachelor_school_list[0], style)                                                                             # to check if it is our alumni
-                writeExcel(index + 2, format_dict['column_of_master_degree_university'], master_school_list[0], style)                                                                                #regular expression may help here
+                writeExcel(index + 2, format_dict['column_of_master_degree_university'], master_school_list[0], style)
+                writeExcel(index + 2, 6, "master", style)
                 writeExcel(index + 2, format_dict['column_of_master_field'], master_field_list[0], style)
                 try:
                     writeExcel(index + 2, format_dict['column_of_PhD_degree_university'], PhD_school_list[0], style)
                     writeExcel(index + 2, format_dict['column_of_PhD_field'], PhD_field_list[0], style)
+                    writeExcel(index + 2, 9, "PhD", style)
                 except:
                     position = re.findall('({[^{]*?"companyName"[^\}]*?\})', content)
                     if position:
@@ -220,6 +223,7 @@ def parse(content,url,index):
     except:
         print('We cannot get his bachelor\'s degree information so it is need to be checked by human')
         writeExcel(index + 2, 24, 'to be checked', style)
+        writeExcel(index + 2, format_dict['column_of_url_linkedin'], url, style)
 
 
 if __name__ == '__main__':
