@@ -1,7 +1,7 @@
 # Apr. 3, 2019
 # This project is aimed at help automate the information collecting of the alumni of Shanghai Jiao Tong University and University of Michigan Joint institute from the linkedin information which is open to the public
 # Fangzhe Li, freshman in Joint Institute, the student assistant of JI development office
-
+#test
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 import time
