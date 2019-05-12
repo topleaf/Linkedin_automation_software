@@ -65,30 +65,68 @@ def openChrome():
 
 # direct to the page of the alumni
 def direct_to_alumni_page(driver,English_name_of_alumni):
-    elem = driver.find_element_by_xpath("//*[@id='nav-search-artdeco-typeahead']/artdeco-typeahead-deprecated-input/input")  # get to the search button
-    elem.send_keys(English_name_of_alumni)
-    elem.send_keys(Keys.ENTER)
-    time.sleep(3)
-    # for link in driver.find_elements_by_xpath("(//*[@href])"):
-    #     print (link.get_attribute('href'))
-    element = driver.find_element_by_xpath("(//*[@href])[31]")     #hard code here
-    url = element.get_attribute('href')
-    driver.get(url)
-    time.sleep(3)
-    print('already direct to the personal page')
+    driver.get('https://www.linkedin.com')
+    time.sleep(4)
+    mainpage = driver.current_url
+    if (mainpage[0:29]=='https://www.linkedin.com/feed'):
+        try:
+            elem = driver.find_element_by_xpath("//*[@id='nav-search-artdeco-typeahead']/artdeco-typeahead-deprecated-input/input")  # get to the search button
+            elem.send_keys(English_name_of_alumni)
+            elem.send_keys(Keys.ENTER)
+        except Exception as e:
+            print("exception happened in direct_to_alumni_page():{}".format(e))
+        driver.implicitly_wait(20)
+        time.sleep(3)
+        for link in driver.find_elements_by_xpath("(//*[@href])"):
+            print (link.get_attribute('href'))
+        element = driver.find_element_by_xpath("(//*[@href])[31]")
+        # element = driver.find_element_by_class_name("search-results__list").find_elements_by_xpath("(//*[@href])[1]")
+        print("in direct_to_alumni_page: start to get url")
+        url = element.get_attribute('href')
+        print('entering get')
+        starttime = time.time()
+        driver.get(url)
+        print('out of get')
+        endtime = time.time()
+        print ('time elapsed:{} seconds'.format(endtime-starttime))
+        driver.implicitly_wait(5)
+        print(driver.current_url)
+        print('in direct_to_alumni_page:already direct to the personal page')
+    else:
+        url = 0
     return url
 
 
 # login in
 def login():
-    linkedin_url = "https://www.linkedin.com"
+    driver.delete_all_cookies()
+    # linkedin_url = "https://www.linkedin.com"
+    linkedin_url = "https://www.linkedin.com/login?trk=guest_homepage-basic_nav-header-signin"
     driver.get(linkedin_url)
-    elem = driver.find_element_by_id("login-email")
+    # resp = driver.get(linkedin_url)
+    # print ('resp={}'.format(resp))
+    # elem = driver.find_element_by_id("login-email")
+    # print("exception happened:{}".format(e))
+    # elem.send_keys("ji-alumni@sjtu.edu.cn")
+    # elem = driver.find_element_by_id("login-password")
+    # elem.send_keys("UMSJTUJI2006")
+    elem = driver.find_element_by_id("username")
     elem.send_keys("ji-alumni@sjtu.edu.cn")
-    elem = driver.find_element_by_id("login-password")
+    elem = driver.find_element_by_id("password")
     elem.send_keys("UMSJTUJI2006")
-    driver.find_element_by_id("login-submit").click()
-    driver.get_cookies()                #get the cookie of the website
+    elem.send_keys(Keys.ENTER)
+    try:
+        cookies = driver.get_cookies()                #get the cookie of the website
+        for cookie in cookies:
+            driver.add_cookie({
+                'domain': cookie['domain'],
+                'name': cookie['name'],
+                'value': cookie['value'],
+                'path': '/',
+                'expires': None
+            })
+    except Exception as e:
+        print("exception happened in direct_to_alumni_page():{}".format(e))
     return
 
 
@@ -230,21 +268,26 @@ if __name__ == '__main__':
     alumnilist = alumni_list_input()
     data = xlrd.open_workbook(r'C:\Users\tople\.PyCharmCE2018.3\config\scratches\temporary.xls',ragged_rows=True)
     table = data.sheets()[format_dict['chart_sheet']]
+    driver = openChrome()
+    login()
     for j in range(len(alumnilist)):
         # print(table.cell(j+2,24).value)
         if ((table.cell(j+2,24)).value!='finished') and (table.cell(j+2,24).value!='error')and (table.cell(j+2,24).value!='to be checked'):
-            driver = openChrome()
-            login()
             try:
+                print('before entering direct_to_alumni')
                 url = direct_to_alumni_page(driver,alumnilist[j])
-                content = get_page_source()
-                # print(content)                  #for the test use
-                parse(content, url,j)
-                driver.quit()
+                print('exit  direct_to_alumni')
+                if (url!=0):
+                    content = get_page_source()
+                    # print(content)                  #for the test use
+                    parse(content, url,j)
+                # driver.quit()
             except TypeError:
                 print('We cannot get the information of this alumni')
                 writeExcel(j+2, 24, 'error', style)
-                driver.quit()
+                # driver.quit()
+            except Exception as e:
+                print("exception happened in main:{}".format(e))
             else:
                 print("write the content into the excel successfully!\n\n")
     data.release_resources()
