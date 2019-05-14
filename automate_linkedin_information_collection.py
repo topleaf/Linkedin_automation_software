@@ -1,7 +1,7 @@
 # Apr. 3, 2019
 # This project is aimed at help automate the information collecting of the alumni of Shanghai Jiao Tong University and University of Michigan Joint institute from the linkedin information which is open to the public
 # Fangzhe Li, freshman in Joint Institute, the student assistant of JI development office
-#test
+
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 import time
@@ -59,7 +59,9 @@ def openChrome():
     option = webdriver.ChromeOptions()
     option.add_argument('disable-infobars')
     # open the chrome
-    driver = webdriver.Chrome(chrome_options=option)
+    driver = webdriver.Chrome(options=option)
+    driver.set_page_load_timeout(20)
+    driver.set_script_timeout(20)
     return driver
 
 
@@ -77,19 +79,21 @@ def direct_to_alumni_page(driver,English_name_of_alumni):
             print("exception happened in direct_to_alumni_page():{}".format(e))
         driver.implicitly_wait(20)
         time.sleep(3)
-        for link in driver.find_elements_by_xpath("(//*[@href])"):
-            print (link.get_attribute('href'))
+        # for link in driver.find_elements_by_xpath("(//*[@href])"):
+        #     print (link.get_attribute('href'))
         element = driver.find_element_by_xpath("(//*[@href])[31]")
         # element = driver.find_element_by_class_name("search-results__list").find_elements_by_xpath("(//*[@href])[1]")
-        print("in direct_to_alumni_page: start to get url")
+        # print("in direct_to_alumni_page: start to get url")
         url = element.get_attribute('href')
-        print('entering get')
         starttime = time.time()
-        driver.get(url)
-        print('out of get')
+        driver.implicitly_wait(5)
+        try:
+            driver.get(url)
+        except:
+            print('！！！！！！time out after 10 seconds when loading page！！！！！！')
+            driver.execute_script("window.stop()")
         endtime = time.time()
         print ('time elapsed:{} seconds'.format(endtime-starttime))
-        driver.implicitly_wait(5)
         print(driver.current_url)
         print('in direct_to_alumni_page:already direct to the personal page')
     else:
@@ -273,10 +277,10 @@ if __name__ == '__main__':
     for j in range(len(alumnilist)):
         # print(table.cell(j+2,24).value)
         if ((table.cell(j+2,24)).value!='finished') and (table.cell(j+2,24).value!='error')and (table.cell(j+2,24).value!='to be checked'):
+            # print('before entering direct_to_alumni')
+            url = direct_to_alumni_page(driver,alumnilist[j])
+            # print('exit  direct_to_alumni')
             try:
-                print('before entering direct_to_alumni')
-                url = direct_to_alumni_page(driver,alumnilist[j])
-                print('exit  direct_to_alumni')
                 if (url!=0):
                     content = get_page_source()
                     # print(content)                  #for the test use
