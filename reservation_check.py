@@ -3,9 +3,12 @@
 # Fangzhe Li, freshman in Joint Institute, the student assistant of JI development office
 
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException,NoSuchAttributeException,NoSuchCookieException
+from selenium.common.exceptions import NoSuchElementException,NoSuchAttributeException, \
+    StaleElementReferenceException,NoSuchCookieException
 from selenium.webdriver.common.keys import Keys
 import time
+from pygame import mixer
+
 import re
 import chardet
 import pypinyin
@@ -16,6 +19,7 @@ import xlsxwriter
 # import xlwt
 # from xlwt import Style
 import logging
+import subprocess
 
 """
 prerequiste:
@@ -28,6 +32,19 @@ class Webscrapper:
         self.root_url = url
         self.driver = None
         self.logger = logger
+        self.nearest_date = '09日09月2021年'
+        self.too_late_date = '09日09月2021年'
+        self.try_days = ['1','2','3','4','5']
+        mixer.init(44100)
+        pwd = subprocess.check_output('pwd').decode('utf-8')[:-1]
+        sound_file = pwd+'/'+'bell.wav'
+        self.logger.debug('sound_file:{}'.format(sound_file))
+        try:
+            self.sound = mixer.Sound(sound_file)
+        except FileNotFoundError as e:
+            self.logger.error('{}:{}'.format(e, sound_file))
+            exit(-1)
+            
 
     def run(self):
         self.driver = self.openChrome()
@@ -35,6 +52,32 @@ class Webscrapper:
         self.direct_to_online_reservation_page()
         self.direct_to_chinese_go_abroad_study()
         self.direct_to_go_abroad_physical_exam()
+        self.direct_to_reservation()
+        i = 0
+        self.too_late_day = self.too_late_date.split('日')[0]
+        self.too_late_month = self.too_late_date.split('日')[1].split('月')[0]
+        self.nearest_day = self.nearest_date.split('日')[0]
+        self.nearest_month = self.nearest_date.split('日')[1].split('月')[0]
+
+        self.logger.debug('too_late_date is {}月{}日,'
+                          'nearest date is {}月{}日'.format(self.too_late_month,
+                                                          self.too_late_day,
+                                                          self.nearest_month,
+                                                          self.nearest_day))
+        while (self.nearest_date >= self.too_late_date):
+            i += 1
+            _, i = divmod(i, 5)
+            self.direct_to_select_date(self.try_days[i])
+            self.check_nearest_date()
+            self.nearest_day = self.nearest_date.split('日')[0]
+            self.nearest_month = self.nearest_date.split('日')[1].split('月')[0]
+            self.logger.debug('nearest date is {}月{}日'.format(self.nearest_month,
+                                                              self.nearest_day))
+        while True:
+            self.sound.play()
+
+        self.driver.quit()
+
 
     # open the chrome
     def openChrome(self):
@@ -52,13 +95,6 @@ class Webscrapper:
         self.driver.delete_all_cookies()
         login_url = self.root_url+"/MEC/login"
         self.driver.get(login_url)
-        # resp = driver.get(login_url)
-        # print ('resp={}'.format(resp))
-        # elem = driver.find_element_by_id("login-email")
-        # print("exception happened:{}".format(e))
-        # elem.send_keys("ji-alumni@sjtu.edu.cn")
-        # elem = driver.find_element_by_id("login-password")
-        # elem.send_keys("UMSJTUJI2006")
         try:
             elem = self.driver.find_element_by_id("loginName")
             elem.send_keys("shhg_li")
@@ -100,9 +136,9 @@ class Webscrapper:
         try:
             post_login_page = self.driver.current_url
             self.logger.debug('post_login_page is {}'.format(post_login_page))
-            time.sleep(10)
+            time.sleep(5)
             post_login_page = self.driver.current_url
-            self.logger.debug('after sleep 10 seconds, post_login_page is {}'.format(post_login_page))
+            self.logger.debug('after sleep 5 seconds, post_login_page is {}'.format(post_login_page))
             if '/MEC/user/mec/recordList' in post_login_page:
                 # <li><a href="/MEC/user/mec/choose">在线预约</a></li>
                 # <a href="/MEC/user/mec/choose">在线预约</a>
@@ -115,6 +151,7 @@ class Webscrapper:
 
                 element = self.driver.find_element_by_partial_link_text('在线预约')
                 element.click()
+                time.sleep(2)
                 # <div class="layui-unselect layui-form-checkbox layui-form-checked"
                 # lay-skin="primary"><span>已阅读</span><i class="layui-icon layui-icon-ok"></i></div>
                 element = self.driver.find_element_by_class_name("layui-form-checkbox")
@@ -134,9 +171,9 @@ class Webscrapper:
         try:
             post_page = self.driver.current_url
             self.logger.debug('post_page is {}'.format(post_page))
-            time.sleep(10)
+            time.sleep(5)
             post_page = self.driver.current_url
-            self.logger.debug('after sleep 10 seconds, post_page is {}'.format(post_page))
+            self.logger.debug('after sleep 5 seconds, post_page is {}'.format(post_page))
 
             if '/MEC/user/mec/choose' in post_page:
                 # select '中国公民出境留学'
@@ -160,9 +197,9 @@ class Webscrapper:
         try:
             post_page = self.driver.current_url
             self.logger.debug('post_page is {}'.format(post_page))
-            time.sleep(10)
+            time.sleep(5)
             post_page = self.driver.current_url
-            self.logger.debug('after sleep 10 seconds, post_page is {}'.format(post_page))
+            self.logger.debug('after sleep 5 seconds, post_page is {}'.format(post_page))
 
             if '/MEC/user/mec/choose?id=16' in post_page:
             # select 'jinbanglu'
@@ -178,9 +215,9 @@ class Webscrapper:
 
                 post_page = self.driver.current_url
                 self.logger.debug('post_page is {}'.format(post_page))
-                time.sleep(10)
+                time.sleep(3)
                 post_page = self.driver.current_url
-                self.logger.debug('after sleep 10 seconds, post_page is {}'.format(post_page))
+                self.logger.debug('after sleep 3 seconds, post_page is {}'.format(post_page))
                 if 'MEC/user/mec' in post_page:
                     # click 已阅读 checkbox
                     #<div class="layui-unselect layui-form-checkbox" lay-skin="primary"><span>已阅读</span><i class="layui-icon layui-icon-ok"></i></div>
@@ -191,12 +228,103 @@ class Webscrapper:
                     element = self.driver.find_element_by_id('continue')
                     element.click()
                 else:
-                    self.logger.error('wrong page -4')
-                    exit(-4)
+                    self.logger.error('no prompt page, maybe right,wrong page -4')
+                    # exit(-4)
             else:
                 self.logger.error('wrong page -3')
                 exit(-3)
         except (NoSuchElementException,NoSuchAttributeException) as e:
+            self.logger.error(e)
+
+
+    def direct_to_reservation(self):
+        try:
+            post_page = self.driver.current_url
+            self.logger.debug('post_page is {}'.format(post_page))
+            time.sleep(2)
+            post_page = self.driver.current_url
+            self.logger.debug('after sleep 2 seconds, post_page is {}'.format(post_page))
+
+            if '/MEC/user/mec' in post_page:        # 展示个人信息，待确认
+                #<button class="layui-btn layui-btn-normal"
+                # lay-submit="" lay-filter="mec">继续</button>
+                element = self.driver.find_element_by_class_name('layui-btn-normal')
+                if element.text =='继续':
+                    element.click()
+                else:
+                    logger.error('unsync')
+            else:
+                self.logger.error('wrong page -5')
+                exit(-5)
+        except (NoSuchElementException,NoSuchAttributeException) as e:
+            self.logger.error(e)
+
+    def direct_to_select_date(self,target_date):
+        try:
+            post_page = self.driver.current_url
+            self.logger.debug('post_page is {}'.format(post_page))
+            time.sleep(5)
+            post_page = self.driver.current_url
+            self.logger.debug('after sleep 5 seconds, post_page is {}'.format(post_page))
+
+            if '/MEC/user/mec' in post_page:
+                #<input type="text" id="numDate" name="numDate"
+                # placeholder="请选择预约日期" autocomplete="off" class="layui-input"
+                # lay-filter="numDate" lay-vertype="tips" lay-key="1">
+                element = self.driver.find_element_by_id('numDate')
+                element.click()
+                time.sleep(5)
+
+                # element = self.driver.find_element_by_class_name('laydate-btns-now')
+                # if element.text == '现在':        #select 现在 button
+                #     element.click()
+                # time.sleep(2)
+
+                #<td lay-ymd="2021-8-6" class="laydate-day-next">6</td>
+                elements = self.driver.find_elements_by_class_name('laydate-day-next')
+                for element in elements:        #select target_date
+                    self.logger.debug('element.text={}'.format(element.text))
+                    if element.text == target_date:
+                        element.click()
+                        break
+                time.sleep(2)
+
+                # #<button class="layui-btn layui-btn-normal"
+                # # lay-submit="" lay-filter="res">提交</button>
+                # element = self.driver.find_element_by_class_name('layui-btn-normal')
+                # if element.text == '提交':        #select button
+                #     element.click()
+                # time.sleep(2)
+
+                element = self.driver.find_element_by_class_name('layui-layer-btn0')
+                if element.text == '确定':        #select ‘确定’ trying to go to nearest date webpage
+                    element.click()
+
+            else:
+                self.logger.error('wrong page -6')
+                exit(-6)
+        except (NoSuchElementException,NoSuchAttributeException,StaleElementReferenceException) as e:
+            self.logger.error(e)
+
+
+    def check_nearest_date(self):
+        try:
+            post_page = self.driver.current_url
+            self.logger.debug('post_page is {}'.format(post_page))
+            time.sleep(3)
+            post_page = self.driver.current_url
+            self.logger.debug('after sleep 3 seconds, post_page is {}'.format(post_page))
+
+            if '/MEC/user/mec' in post_page:
+                element = self.driver.find_element_by_id('numDate')
+                # get actual value of the text input,which is filled by js.
+                self.nearest_date = element.get_attribute('value')
+                self.logger.info('nearest date is {}'.format(self.nearest_date))
+            else:
+                self.logger.error('wrong page -7')
+                exit(-7)
+        except (NoSuchElementException,NoSuchAttributeException,
+                StaleElementReferenceException) as e:
             self.logger.error(e)
 
 
@@ -205,187 +333,7 @@ class Webscrapper:
 
 
 
-
-
-
-# direct to the page of reservation
-def direct_to_reserve_page(driver,English_name_of_alumni):
-    driver.get('https://www.linkedin.com')
-    time.sleep(4)
-    mainpage = driver.current_url
-    if (mainpage[0:29]=='https://www.linkedin.com/feed'):
-        try:
-            elem = driver.find_element_by_xpath("//*[@id='nav-search-artdeco-typeahead']/artdeco-typeahead-deprecated-input/input")  # get to the search button
-            elem.send_keys(English_name_of_alumni)
-            elem.send_keys(Keys.ENTER)
-        except Exception as e:
-            print("exception happened in direct_to_reserve_page():{}".format(e))
-        driver.implicitly_wait(20)
-        time.sleep(3)
-        # for link in driver.find_elements_by_xpath("(//*[@href])"):
-        #     print (link.get_attribute('href'))
-        element = driver.find_element_by_xpath("(//*[@href])[31]")
-        # element = driver.find_element_by_class_name("search-results__list").find_elements_by_xpath("(//*[@href])[1]")
-        # print("in direct_to_reserve_page: start to get url")
-        url = element.get_attribute('href')
-        starttime = time.time()
-        driver.implicitly_wait(5)
-        try:
-            driver.get(url)
-        except:
-            print('！！！！！！time out after 10 seconds when loading page！！！！！！')
-            driver.execute_script("window.stop()")
-        endtime = time.time()
-        print ('time elapsed:{} seconds'.format(endtime-starttime))
-        print(driver.current_url)
-        print('in direct_to_reserve_page:already direct to the personal page')
-    else:
-        url = 0
-    return url
-
-
-
-
-#
-# # get the page source of the alumni page
-# def get_page_source():
-#     content = driver.page_source
-#     return content
-#
-# #
-# # def writeExcel(row, col, str, styl=Style.default_style):
-# #     file = r'C:\Users\tople\.PyCharmCE2018.3\config\scratches\temporary.xls'
-# #     rb = xlrd.open_workbook(file, formatting_info=True,ragged_rows=True)
-# #     wb = copy(rb)
-# #     ws = wb.get_sheet(format_dict['chart_sheet'])
-# #     ws.write(row, col, str, styl)
-# #     wb.save(file)
-# #     rb.release_resources()
-# #
-# #
-# # style = xlwt.easyxf('font: name Times New Roman')
-# #
-#
-# def parse(content,url,index):
-#     profile_txt = ''.join(re.findall('"data":{"\*profile":.*', content))
-#     profile_txt = bytes(profile_txt, 'utf-8')
-#     # print(profile_txt)
-#     encode_type = chardet.detect(profile_txt)
-#     profile_txt = profile_txt.decode(encode_type['encoding'])  # decode the text
-#     firstname = re.findall('"firstName":"(.*?)"', profile_txt)
-#     lastname = re.findall('"lastName":"(.*?)"', profile_txt)
-#     if firstname and lastname:
-#         print('Name: %s%s    Linkedin: %s' % (lastname[0], firstname[0], url))
-#
-#         occupation = re.findall('"headline":"(.*?)"', profile_txt)
-#         if occupation:
-#             print('Occupation: %s' % occupation[0])
-#
-#         locationName = re.findall('"locationName":"(.*?)"', profile_txt)
-#         if locationName:
-#             print('Location: %s' % locationName[0])
-#
-#         networkInfo_txt = ' '.join(
-#             re.findall('({[^{]*?profile\.ProfileNetworkInfo"[^\}]*?\})', content))
-#         connectionsCount = re.findall('"connectionsCount":(\d+)', networkInfo_txt)
-#         if connectionsCount:
-#             print('Connection number: %s' % connectionsCount[0])
-#     # educations = re.findall('({[^{]*?profile\.Education"[^\}]*?\})', content)
-#     educations = re.findall('"description.*?degreeUrn', content)
-#     if educations:
-#         print('Education:')
-#     schoolNamelist=[]
-#     fieldOfStudylist = []
-#     degreeNamelist = []
-#     company_name_list=[]
-#     bachelor_degree_list=[]
-#     bachelor_school_list = []
-#     bachelor_field_list=[]
-#     master_degree_list=[]
-#     master_school_list = []
-#     master_field_list = []
-#     PhD_degree_list=[]
-#     PhD_school_list = []
-#     PhD_field_list = []
-#     for one in educations:
-#         schoolName = re.findall('"schoolName":"(.*?)"', one)
-#         schoolName = ''.join(schoolName)
-#         schoolNamelist.append(schoolName)
-#         fieldOfStudy = re.findall('"fieldOfStudy":"(.*?)"', one)
-#         fieldOfStudy = ''.join(fieldOfStudy)
-#         fieldOfStudylist.append(fieldOfStudy)
-#         degreeName = re.findall('"degreeName":"(.*?)"', one)
-#         degreeName = ''.join(degreeName)
-#         degreeNamelist.append(degreeName)
-#         if schoolName:
-#             fieldOfStudy = '   %s' % fieldOfStudy if fieldOfStudy else ''
-#             degreeName = '   %s' % degreeName if degreeName else ''
-#             print('     %s %s %s' % (schoolName,  fieldOfStudy, degreeName))               #screen show part
-#     for i in range(len(educations)):
-#             if degreeNamelist[i].find('B.S.')>=0 or degreeNamelist[i].find('本')>=0 or degreeNamelist[i].find('学')>=0 or degreeNamelist[i].find('Bachelor')>=0 or degreeNamelist[i].find('BS')>=0:
-#                 bachelor_degree_list.append(degreeNamelist[i])
-#                 bachelor_school_list.append(schoolNamelist[i])
-#                 bachelor_field_list.append(fieldOfStudylist[i])
-#             elif degreeNamelist[i].find('M')>=0 or degreeNamelist[i].find('硕')>=0:
-#                 master_degree_list.append(degreeNamelist[i])
-#                 master_school_list.append(schoolNamelist[i])
-#                 master_field_list.append(fieldOfStudylist[i])
-#             elif degreeNamelist[i].find('D')>=0 or degreeNamelist[i].find('博')>=0:
-#                 PhD_degree_list.append(degreeNamelist[i])
-#                 PhD_school_list.append(schoolNamelist[i])
-#                 PhD_field_list.append(fieldOfStudylist[i])
-#             else:
-#                 pass
-#     try:
-#         if bachelor_school_list[0].find('Jiao')>=0 or bachelor_school_list[0].find('Michigan')>=0 or bachelor_school_list[0].find('交')>=0 or bachelor_school_list[0].find('SJTU')>=0:
-#             print("this is our alumni")
-#             writeExcel(index + 2, 24, 'finished', style)  # flag to identify if the information has been found
-#             try:
-#                 writeExcel(index + 2, format_dict['column_of_url_linkedin'], url, style)
-#                 writeExcel(index + 2, 25, lastname[0] + firstname[0],style)                                                                           # to check if it is the alumni we are going to find
-#                 writeExcel(index + 2, format_dict['column_of_position'], occupation[0], style)
-#                 writeExcel(index + 2, format_dict['column_of_place'], locationName[0], style)
-#                 writeExcel(index + 2, 26, bachelor_school_list[0], style)                                                                             # to check if it is our alumni
-#                 writeExcel(index + 2, format_dict['column_of_master_degree_university'], master_school_list[0], style)
-#                 writeExcel(index + 2, 6, "master", style)
-#                 writeExcel(index + 2, format_dict['column_of_master_field'], master_field_list[0], style)
-#                 try:
-#                     writeExcel(index + 2, format_dict['column_of_PhD_degree_university'], PhD_school_list[0], style)
-#                     writeExcel(index + 2, format_dict['column_of_PhD_field'], PhD_field_list[0], style)
-#                     writeExcel(index + 2, 9, "PhD", style)
-#                 except:
-#                     position = re.findall('({[^{]*?"companyName"[^\}]*?\})', content)
-#                     if position:
-#                         print('Work Experience:')
-#                     for one in position:
-#                         companyName = re.findall('"companyName":"(.*?)"', one)
-#                         company_name_list.append(companyName)
-#                         try:
-#                             writeExcel(index + 2, format_dict['column_of_company'], company_name_list[0],style)
-#                             title = re.findall('"title":"(.*?)"', one)
-#                             locationName = re.findall('"locationName":"(.*?)"', one)
-#                             if companyName:
-#                                 title = '   %s' % title[0] if title else ''
-#                                 locationName = '   %s' % locationName[0] if locationName else ''
-#                                 print('    %s %s %s' % (companyName[0], title, locationName))
-#                         except:
-#                             print('No company information is been found')
-#             except:
-#                 print('some information is missing here')
-#         else:
-#             print('this is not our alumni')
-#             writeExcel(index + 2, 24, 'finished', style)  # flag to identify if the information has been found
-#     except:
-#         print('We cannot get his bachelor\'s degree information so it is need to be checked by human')
-#         writeExcel(index + 2, 24, 'to be checked', style)
-#         writeExcel(index + 2, format_dict['column_of_url_linkedin'], url, style)
-#
-
 if __name__ == '__main__':
-    # alumnilist = alumni_list_input()
-    # data = xlrd.open_workbook(r'C:\Users\tople\.PyCharmCE2018.3\config\scratches\temporary.xls',ragged_rows=True)
-    # table = data.sheets()[format_dict['chart_sheet']]
-
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
 
@@ -397,27 +345,3 @@ if __name__ == '__main__':
     root_url = 'https://online.shhg12360.cn'
     instance = Webscrapper(root_url, logger)
     instance.run()
-    #
-    # url = direct_to_reserve_page(driver,alumnilist[j])
-    #
-    # for j in range(len(alumnilist)):
-    #     # print(table.cell(j+2,24).value)
-    #     if ((table.cell(j+2,24)).value!='finished') and (table.cell(j+2,24).value!='error')and (table.cell(j+2,24).value!='to be checked'):
-    #         # print('before entering direct_to_alumni')
-    #         url = direct_to_reserve_page(driver,alumnilist[j])
-    #         # print('exit  direct_to_alumni')
-    #         try:
-    #             if (url!=0):
-    #                 content = get_page_source()
-    #                 # print(content)                  #for the test use
-    #                 parse(content, url,j)
-    #             # driver.quit()
-    #         except TypeError:
-    #             print('We cannot get the information of this alumni')
-    #             writeExcel(j+2, 24, 'error', style)
-    #             # driver.quit()
-    #         except Exception as e:
-    #             print("exception happened in main:{}".format(e))
-    #         else:
-    #             print("write the content into the excel successfully!\n\n")
-    # data.release_resources()
