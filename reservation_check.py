@@ -33,7 +33,7 @@ class Webscrapper:
         self.driver = None
         self.logger = logger
         self.nearest_date = '09日09月2021年'
-        self.too_late_date = '09日09月2021年'
+        self.too_late_date = '09日08月2021年'
         self.try_days = ['1','2','3','4','5']
         mixer.init(44100)
         pwd = subprocess.check_output('pwd').decode('utf-8')[:-1]
@@ -64,7 +64,9 @@ class Webscrapper:
                                                           self.too_late_day,
                                                           self.nearest_month,
                                                           self.nearest_day))
-        while (self.nearest_date >= self.too_late_date):
+        while (self.nearest_month > self.too_late_month or
+               (self.nearest_month == self.too_late_month and
+                self.nearest_day > self.too_late_day)):
             i += 1
             _, i = divmod(i, 5)
             self.direct_to_select_date(self.try_days[i])
