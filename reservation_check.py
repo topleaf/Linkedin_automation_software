@@ -20,6 +20,7 @@ import xlsxwriter
 # from xlwt import Style
 import logging
 import subprocess
+from wechatAgent import WechatAgent
 
 """
 prerequiste:
@@ -35,7 +36,10 @@ class Webscrapper:
         self.nearest_date = '09日09月2021年'
         self.too_late_date = '09日08月2021年'
         self.try_days = ['1','2','3','4','5']
+        self.wx = WechatAgent(logger)
+
         mixer.init(44100)
+
         pwd = subprocess.check_output('pwd').decode('utf-8')[:-1]
         sound_file = pwd+'/'+'bell.wav'
         self.logger.debug('sound_file:{}'.format(sound_file))
@@ -77,8 +81,9 @@ class Webscrapper:
             self.nearest_month = self.nearest_date.split('日')[1].split('月')[0]
             self.logger.debug('nearest date is {}月{}日'.format(self.nearest_month,
                                                               self.nearest_day))
-        while True:
-            self.sound.play()
+        self.wx.send_msg(nickName='随风往事', mesg='自动生成的消息： 最近可预约的日期是{},快动手去预约!!'.format(self.nearest_date))
+        self.wx.quit()
+        # self.sound.play()
 
         self.driver.quit()
 
@@ -341,6 +346,7 @@ class Webscrapper:
                 # get actual value of the text input,which is filled by js.
                 self.nearest_date = element.get_attribute('value')
                 self.logger.info('nearest date is {}'.format(self.nearest_date))
+                # self.wx.send_msg(nickName='随风往事', mesg='最近可预约的日期是{}'.format(self.nearest_date))
             else:
                 self.logger.error('wrong page -7')
                 exit(-7)
