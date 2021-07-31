@@ -49,10 +49,7 @@ class Webscrapper:
     def run(self):
         self.driver = self.openChrome()
         self.login()
-        self.direct_to_online_reservation_page()
-        self.direct_to_chinese_go_abroad_study()
-        self.direct_to_go_abroad_physical_exam()
-        self.direct_to_reservation()
+
         i = 0
         self.too_late_day = self.too_late_date.split('日')[0]
         self.too_late_month = self.too_late_date.split('日')[1].split('月')[0]
@@ -67,6 +64,11 @@ class Webscrapper:
         while (self.nearest_month > self.too_late_month or
                (self.nearest_month == self.too_late_month and
                 self.nearest_day > self.too_late_day)):
+            self.direct_to_online_reservation_page()
+            self.direct_to_chinese_go_abroad_study()
+            _, seq = divmod(i, 2)
+            self.direct_to_go_abroad_physical_exam(seq)
+            self.direct_to_reservation()
             i += 1
             _, i = divmod(i, 5)
             self.direct_to_select_date(self.try_days[i])
@@ -141,7 +143,8 @@ class Webscrapper:
             time.sleep(5)
             post_login_page = self.driver.current_url
             self.logger.debug('after sleep 5 seconds, post_login_page is {}'.format(post_login_page))
-            if '/MEC/user/mec/recordList' in post_login_page:
+            if ('/MEC/user/mec/recordList' in post_login_page or
+                '/MEC/user/mec' in post_login_page):
                 # <li><a href="/MEC/user/mec/choose">在线预约</a></li>
                 # <a href="/MEC/user/mec/choose">在线预约</a>
                 # elements = self.driver.find_elements_by_tag_name('a')
@@ -195,13 +198,18 @@ class Webscrapper:
         except (NoSuchElementException,NoSuchAttributeException) as e:
             self.logger.error(e)
 
-    def direct_to_go_abroad_physical_exam(self):
+    def direct_to_go_abroad_physical_exam(self,seq):
+        """
+
+        :param seq: 0: 出国留学体检 金浜路，1：出国留学接种填表金浜路，3 出境金桥体检，4 出国留学接种填表金桥
+        :return:
+        """
         try:
             post_page = self.driver.current_url
             self.logger.debug('post_page is {}'.format(post_page))
             time.sleep(5)
             post_page = self.driver.current_url
-            self.logger.debug('after sleep 5 seconds, post_page is {}'.format(post_page))
+            self.logger.debug('seq={},after sleep 5 seconds, post_page is {}'.format(seq,post_page))
 
             if '/MEC/user/mec/choose?id=16' in post_page:
             # select 'jinbanglu'
@@ -209,11 +217,22 @@ class Webscrapper:
             # href="javascript:void(0)" style="white-space: normal !important;"
             # onclick="Mec_choose.chooseRes(4)">出境留学体检（地址：长宁区金浜路15号）</a>
                 elements = self.driver.find_elements_by_class_name('layui-btn-normal')
-                for element in elements:
-                    if '长宁区金浜路15号' in element.text:
-                        element.click()
-                        break
-
+                if seq == 0:
+                    for element in elements:
+                        if '出境留学体检（地址：长宁区金浜路15号' in element.text:
+                            element.click()
+                            break
+            #<a class="layui-btn layui-btn-sm layui-btn-normal"
+                # href="javascript:void(0)" style="white-space: normal !important;"
+                # onclick="Mec_choose.chooseRes(12)">接种、填表等体检外业务（地址：长宁区金浜路15号）</a>
+                elif seq == 1:
+                    for element in elements:
+                        if '接种、填表等体检外业务（地址：长宁区金浜路15号' in element.text:
+                            element.click()
+                            break
+                else:
+                    self.logger.error('unsupported feature')
+                    self.exit(-9)
 
                 post_page = self.driver.current_url
                 self.logger.debug('post_page is {}'.format(post_page))
